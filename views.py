@@ -85,7 +85,7 @@ def proper(request):
         city = request.POST.get("City")
         address = request.POST.get("Address")
         description = request.POST.get("Description")
-        new_property = User_insertion(Last_name=last_name, First_name=first_name, Country=country, City=city, Address=address, Description=description)
+        new_property = User_insertion(Last_name=last_name, First_name=first_name, Country=country, City=city, Address=address, Description=description, user=request.user)
         new_property.save()
         messages.success(request, "Your property has been saved successfully, your house will be displayed for sale in our site!")
         return render(request, "property/property.html")
@@ -96,12 +96,12 @@ def proper(request):
 def logoutuser(request):
     logout(request)
     messages.success(request, "Logged out successfully. If you want to continue you have to login again!!")
-    return render(request, "login/login.html")
+    return redirect('log_in')
 
 @login_required(login_url = "/login")
 def render_pdf_view(request):
     if request.method == 'GET':
-        properties = User_insertion.objects.all()
+        properties = User_insertion.objects.filter(user=request.user).all()
         context = {'properties': properties}
         template = get_template('pdfile.html')
         context_p = template.render(context)
@@ -113,3 +113,36 @@ def render_pdf_view(request):
             return HttpResponse("We had some errors , please try again later")
     else:
         HttpResponse("Unknown method , not recognised")
+
+@login_required(login_url= '/login')
+def ProperVeiw(request):
+    properties = User_insertion.objects.filter(user=request.user).all()
+    context = {'properties': properties}
+    return render(request, 'properview.html', context)
+
+@login_required(login_url= '/login')
+def editproper(request, id):
+    properties = User_insertion.objects.filter(user=request.user).get(id=id)
+    if request.method == 'POST':
+        last_name = request.POST.get("Last_name")
+        first_name = request.POST.get("First_name")
+        country = request.POST.get("Country")
+        city = request.POST.get("City")
+        address = request.POST.get("Address")
+        description = request.POST.get("Description")
+        User_insertion.objects.filter(id = id, user=request.user).update(Last_name=last_name, First_name=first_name, Country=country, City=city, Address=address, Description=description)
+        messages.success(request, "Your property's attributes have been updated!!")
+        properties = User_insertion.objects.filter(user=request.user).get(id=id)
+        return render(request, 'editproper.html', {'properties': properties})
+    else:
+        return render(request, 'editproper.html', {'properties': properties})
+
+@login_required(login_url='/login')
+def deleteproper(request, id):
+    properties = User_insertion.objects.filter(user=request.user).get(id=id)
+    if request.method == 'POST':
+        properties.user.delete()
+        messages.success(request, "Your property's has been deleted successfully")
+        return redirect('properviews')
+    else:
+        return redirect('properviews')
